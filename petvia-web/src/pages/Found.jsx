@@ -1,109 +1,59 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
+import { postForm } from "../lib/api.js";
 import { Link } from "react-router-dom";
-import { buildFormData, postMultipart } from "../api.js";
 
 export default function Found() {
   const [tipo, setTipo] = useState("cachorro");
-  const [cidade, setCidade] = useState("Goiânia");
+  const [cidade, setCidade] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [observacao, setObservacao] = useState("");
-  const [files, setFiles] = useState([]);
-  const [gps, setGps] = useState(null);
-  const [status, setStatus] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [photos, setPhotos] = useState([]);
+  const [msg, setMsg] = useState("");
 
-  useEffect(() => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => setGps({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
-      () => {},
-      { enableHighAccuracy: true, timeout: 8000 }
-    );
-  }, []);
+  async function submit() {
+    setMsg("Enviando...");
+    const fd = new FormData();
+    fd.append("tipo", tipo);
+    fd.append("cidade", cidade);
+    fd.append("whatsapp", whatsapp);
+    fd.append("observacao", observacao);
+    for (const f of photos) fd.append("photos", f); // ⚠ campo "photos"
 
-  async function submit(e) {
-    e.preventDefault();
-    setStatus("");
-    setLoading(true);
-    try {
-      const fd = buildFormData(
-        {
-          tipo,
-          cidade,
-          whatsapp,
-          observacao,
-          lat: gps?.lat,
-          lng: gps?.lng,
-          accuracy: gps?.accuracy,
-        },
-        files,
-        "photos",
-        3
-      );
-      const out = await postMultipart("/found", fd);
-      setStatus("✅ Enviado! ID: " + out?.data?.id);
-    } catch (err) {
-      setStatus("❌ " + (err?.message || "Erro ao enviar"));
-    } finally {
-      setLoading(false);
-    }
+    const { status, json } = await postForm("/found", fd);
+    if (status >= 200 && status < 300 && json.ok) setMsg("✅ Enviado com sucesso!");
+    else setMsg(`❌ Erro: ${json.error || "Falha"}`);
   }
 
   return (
-    <div className="page">
-      <header className="pageTop">
-        <Link to="/" className="linkBack">← Voltar</Link>
-        <div className="pageTitle">Encontrei um pet</div>
-        <div className="pageSub">Registre para ajudar alguém a reencontrar.</div>
-      </header>
+    <div style={{ background: "white", border: "1px solid #eee", borderRadius: 18, padding: 18 }}>
+      <Link to="/" style={{ textDecoration: "none" }}>← Voltar</Link>
+      <h2 style={{ marginTop: 10 }}>Encontrei um pet</h2>
 
-      <section className="panel">
-        <form className="form" onSubmit={submit}>
-          <div className="grid">
-            <label className="field">
-              <span>Tipo</span>
-              <select value={tipo} onChange={(e) => setTipo(e.target.value)}>
-                <option value="cachorro">Cachorro</option>
-                <option value="gato">Gato</option>
-              </select>
-            </label>
+      <div style={{ display: "grid", gap: 10, maxWidth: 700 }}>
+        <label>Tipo</label>
+        <select value={tipo} onChange={(e) => setTipo(e.target.value)} style={{ padding: 12, borderRadius: 10, border: "1px solid #ddd" }}>
+          <option value="cachorro">Cachorro</option>
+          <option value="gato">Gato</option>
+        </select>
 
-            <label className="field grow">
-              <span>Cidade / Bairro</span>
-              <input value={cidade} onChange={(e) => setCidade(e.target.value)} placeholder="Ex: Goiânia - Bueno" />
-            </label>
-          </div>
+        <label>Cidade/Bairro</label>
+        <input value={cidade} onChange={(e) => setCidade(e.target.value)} style={{ padding: 12, borderRadius: 10, border: "1px solid #ddd" }} />
 
-          <div className="grid">
-            <label className="field grow">
-              <span>WhatsApp (DDD + número)</span>
-              <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="Ex: 62999999999" />
-            </label>
+        <label>WhatsApp (com DDD)</label>
+        <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="Ex: 62999999999" style={{ padding: 12, borderRadius: 10, border: "1px solid #ddd" }} />
 
-            <label className="field">
-              <span>Fotos (até 3)</span>
-              <input type="file" accept="image/*" multiple onChange={(e) => setFiles(Array.from(e.target.files || []))} />
-              <span className="small">{files.length} selecionada(s)</span>
-            </label>
-          </div>
+        <label>Fotos (até 3)</label>
+        <input type="file" multiple accept="image/*" onChange={(e) => setPhotos(Array.from(e.target.files || []).slice(0, 3))} />
 
-          <label className="field">
-            <span>Observações</span>
-            <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder="Cor, porte, coleira, comportamento..." />
-          </label>
+        <label>Observações</label>
+        <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={4} style={{ padding: 12, borderRadius: 10, border: "1px solid #ddd" }} />
 
-          <div className="row">
-            <button className="btn primary big" type="submit" disabled={loading}>
-              {loading ? "Enviando..." : "Enviar"}
-            </button>
-            <div className="small">
-              {gps ? `📍 GPS ok (${gps.lat.toFixed(4)}, ${gps.lng.toFixed(4)})` : "📍 GPS opcional"}
-            </div>
-          </div>
+        <button onClick={submit} style={{ padding: 12, borderRadius: 12, border: 0, background: "#0b7", color: "white", fontWeight: 900, cursor: "pointer" }}>
+          Enviar
+        </button>
 
-          {status && <div className="status">{status}</div>}
-        </form>
-      </section>
+        <div style={{ color: "#444", whiteSpace: "pre-wrap" }}>{msg}</div>
+      </div>
     </div>
   );
 }
