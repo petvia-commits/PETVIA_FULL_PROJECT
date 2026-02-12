@@ -1,0 +1,14 @@
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: petvia-db
+    environment:
+      POSTGRES_DB: petvia
+      POSTGRES_USER: petvia
+      POSTGRES_PASSWORD: petvia
+    ports:
+      - "5432:5432"
+    volumes:
+      - petvia_db:/var/lib/postgresql/data
+volumes:
+  petvia_db:
